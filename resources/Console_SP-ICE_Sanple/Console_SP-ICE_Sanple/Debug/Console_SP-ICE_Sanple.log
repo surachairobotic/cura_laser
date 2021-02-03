@@ -1,0 +1,5 @@
+﻿  Console_SP-ICE_Sanple.cpp
+e:\users\user\documents\visual studio 2015\projects\console_sp-ice_sanple\console_sp-ice_sanple\console_sp-ice_sanple.cpp(74): warning C4244: 'argument': conversion from 'double' to 'short', possible loss of data
+e:\users\user\documents\visual studio 2015\projects\console_sp-ice_sanple\console_sp-ice_sanple\console_sp-ice_sanple.cpp(49): warning C4101: 'x': unreferenced local variable
+  Console_SP-ICE_Sanple.vcxproj -> E:\Users\USER\Documents\Visual Studio 2015\Projects\Console_SP-ICE_Sanple\Debug\Console_SP-ICE_Sanple.exe
+  Console_SP-ICE_Sanple.vcxproj -> E:\Users\USER\Documents\Visual Studio 2015\Projects\Console_SP-ICE_Sanple\Debug\Console_SP-ICE_Sanple.pdb (Full PDB)
