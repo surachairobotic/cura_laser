@@ -1,7 +1,7 @@
 import random
 
 def main():
-  f = open("C:/Users/PC/Desktop/UMS5_cube_10_20_30.gcode", "r")
+  f = open("C:/ws_python/gcode2png/ear.gcode", "r")
   data = f.readlines()
   f.close()
   

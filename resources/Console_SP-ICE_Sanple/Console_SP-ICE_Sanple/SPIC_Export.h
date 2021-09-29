@@ -163,7 +163,7 @@ extern "C"
 	bool __stdcall Delete_File_On_Target_Disk(const char *lpszFileName);
 	unsigned short __stdcall Get_System_Status();
 	bool __stdcall Set_Auto_Jump_Delay_List(unsigned short usDelay, unsigned short usLen);
-	UINT __stdcall Get_Ident_Ex( void );	
+	unsigned int __stdcall Get_Ident_Ex( void );	
 	int __stdcall Get_Mode_Mask(unsigned short* pMode); 
 	bool __stdcall  Set_Head_Rot(double dRot, int NHead);
 
@@ -258,48 +258,48 @@ extern "C"
 	bool __stdcall Set_Laser_Mode_List(unsigned short usLaserMode);
 
 	
-	bool __stdcall SetAutoSegmentation(bool bEnable, USHORT usBreakAngleDegrees);
+	bool __stdcall SetAutoSegmentation(bool bEnable, unsigned short usBreakAngleDegrees);
 
 	
 	bool __stdcall SetAutoCalFineAdjustRange(unsigned nFineAdjustRange);
 	bool __stdcall SetAutoCalNumMeasurements(unsigned nCycles, unsigned nCyclesReference);
 	bool __stdcall GetAutoCalNumMeasurements(unsigned& nCycles, unsigned& nCyclesReference);
 	bool __stdcall RunAutoCalibration();
-	bool __stdcall RunAutoCalibrationOnHead(USHORT nHeadNumber);
+	bool __stdcall RunAutoCalibrationOnHead(unsigned short nHeadNumber);
 	bool __stdcall RunReferenceAutoCalibration();
-	bool __stdcall RunReferenceAutoCalibrationOnHead(USHORT nHeadNumber);
+	bool __stdcall RunReferenceAutoCalibrationOnHead(unsigned short nHeadNumber);
 	bool __stdcall GetAutoCalMeasurement(int anResult[4]);
-	bool __stdcall GetAutoCalMeasurementOfHead(USHORT nHeadNumber, int anResult[4]);
+	bool __stdcall GetAutoCalMeasurementOfHead(unsigned short nHeadNumber, int anResult[4]);
 	bool __stdcall GetAutoCalibratedGain(double& dblGainX, double& dblGainY, bool bAveraged, int nCardIndex);
-	bool __stdcall GetAutoCalibratedGainOfHead(USHORT nHeadNumber, double& dblGainX, double& dblGainY, bool bAveraged, int nCardIndex);
+	bool __stdcall GetAutoCalibratedGainOfHead(unsigned short nHeadNumber, double& dblGainX, double& dblGainY, bool bAveraged, int nCardIndex);
 	bool __stdcall GetAutoCalibratedOffset(int& nOffsetX, int& nOffsetY, bool bAveraged, int nCardIndex);
-	bool __stdcall GetAutoCalibratedOffsetOfHead(USHORT nHeadNumber, int& nOffsetX, int& nOffsetY, bool bAveraged, int nCardIndex);
-	bool __stdcall SetAutoCalNumSamplesForAvg(unsigned nNumSamples, SHORT nHeadNumber, int nCardIndex);
-	bool __stdcall GetAutoCalNumSamplesForAvg(unsigned& rnNumSamples, USHORT nHeadNumber, int nCardIndex);
+	bool __stdcall GetAutoCalibratedOffsetOfHead(unsigned short nHeadNumber, int& nOffsetX, int& nOffsetY, bool bAveraged, int nCardIndex);
+	bool __stdcall SetAutoCalNumSamplesForAvg(unsigned nNumSamples, short nHeadNumber, int nCardIndex);
+	bool __stdcall GetAutoCalNumSamplesForAvg(unsigned& rnNumSamples, unsigned short nHeadNumber, int nCardIndex);
 	bool __stdcall SetAutoCorrection(bool bGain, bool bOffset);
 	bool __stdcall GetAutoCorrection(bool& bGain, bool& bOffset);
-	bool __stdcall SetAutoCalHeadRampDelay(SHORT nHeadNumber, unsigned short nMicroSeconds);
-	bool __stdcall GetAutoCalHeadRampDelay(USHORT nHeadNumber, unsigned short& nMicroSeconds);
+	bool __stdcall SetAutoCalHeadRampDelay(short nHeadNumber, unsigned short nMicroSeconds);
+	bool __stdcall GetAutoCalHeadRampDelay(unsigned short nHeadNumber, unsigned short& nMicroSeconds);
 	bool __stdcall ForceAutoCorrection(bool bForce);
 	bool __stdcall GetAutoCalibrationError(char* szErrorInfo);
 	int  __stdcall GetAutoCalibrationErrorID();
 	bool __stdcall GetAutoCalibrationBusy(bool& bBusy);
-	bool __stdcall ResetCalibrationOfHead(USHORT nHeadNumber);
+	bool __stdcall ResetCalibrationOfHead(unsigned short nHeadNumber);
 	bool __stdcall ResetCalibration();
 	bool __stdcall TerminateCalibration();
 	bool __stdcall SetNullCorrection(int nHeadNumber);
 	bool __stdcall RestoreLastCorrection(int nHeadNumber);
-	bool __stdcall SetAutoCalJumpSpeed(USHORT nHeadNumber, USHORT nStepperiod, USHORT nStepSize);
-	bool __stdcall GetAutoCalValidReference(USHORT nHeadNumber);
-	bool __stdcall SetAutoCalStablePositions(USHORT nHeadNumber, USHORT nPositionX, USHORT nPositionY);
-	bool __stdcall GetAutoCalStablePositions(USHORT nHeadNumber, USHORT& nPositionX, USHORT& nPositionY);
+	bool __stdcall SetAutoCalJumpSpeed(unsigned short nHeadNumber, unsigned short nStepperiod, unsigned short nStepSize);
+	bool __stdcall GetAutoCalValidReference(unsigned short nHeadNumber);
+	bool __stdcall SetAutoCalStablePositions(unsigned short nHeadNumber, unsigned short nPositionX, unsigned short nPositionY);
+	bool __stdcall GetAutoCalStablePositions(unsigned short nHeadNumber, unsigned short& nPositionX, unsigned short& nPositionY);
 	
 	
 	bool __stdcall Arc_Abs( short centreX, short centreY, double angle, unsigned short numSegments );
 	bool __stdcall Arc_Rel( short centreX, short centreY, double angle, unsigned short numSegments );
 
 	
-	bool __stdcall Set_LM_Timer_Unit( USHORT unitID );
+	bool __stdcall Set_LM_Timer_Unit( unsigned short unitID );
 
 	
 	bool __stdcall Set_Edge_Level(unsigned short usEdgeLevel);
