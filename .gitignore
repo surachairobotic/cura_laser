@@ -32,3 +32,4 @@
 *.app
 
 /cura-build-environment
+*/__pycache__
