@@ -14,7 +14,8 @@ class LaserSerial():
 
     def terminate(self):
         if self.port != "" and self.ser.is_open:
-            self.ser.close()        
+            self.setState(0)
+            self.ser.close()
     
     def init(self, debug=False):
         ports = serial.tools.list_ports.comports()
@@ -72,9 +73,24 @@ class LaserSerial():
         return self.readCmd('geterrors?', debug)
     def getWarnings(self, debug=False):
         return self.readCmd('getwarnings?', debug)
+    def getAllInfo(self, debug=False):
+        print('State : {}'.format(self.getState(debug)))
+        print('Current setting : {}'.format(self.getIs1(debug)))
+        print('Max. current : {}'.format(self.getImax(debug)))
+        print('Current : {}'.format(self.getIa1(debug)))
+        print('Temp : {}'.format(self.getTa1(debug)))
+        print('Standard Freq. : {}'.format(self.getEpfq(debug)))
+        print('Freq. under internal control : {}'.format(self.getFreq(debug)))
+        print('Offtime : {}'.format(self.getOfftime(debug)))
+        print('Gate Ext. : {}'.format(self.getGateext(debug)))
+        print('Error : {}'.format(self.getErrors(debug)))
+        print('Warning : {}'.format(self.getWarnings(debug)))
 
+    def setAllInfo(self, debug=False):
+        print('set all info.')
 
     def setState(self, n, timeout=1):
+        print("call : setState = " + str(n))
         self.write('state '+str(n))
         t = time.time()
         while time.time()-t < timeout:
@@ -84,9 +100,13 @@ class LaserSerial():
     
     def setStdfreq(self, freq):
         self.write('epfq '+str(freq))
-    
     def freq(self, n):
         self.write('freq '+str(n))
+    def setOfftime(self, n):
+        self.write('offtime '+str(n))
+    def setGateext(self, n):
+        self.write('gateext '+str(n))
+    
 
     def get_xxx(self, cmd):
         return self.readCmd(cmd, debug=True)
@@ -113,13 +133,19 @@ class LaserSerial():
                     print(self.buff)
                     break
 
-    def readLine(self):
+    def readLine(self, timeout=3):
+        t = time.time()
         buffer = []
+        s = ""
         while True:
+            if time.time()-t > timeout:
+                return 'readLine : timeout'
             oneByte = self.ser.read(1)
-            print(oneByte)
+            #print(oneByte)
             if oneByte == b"\n":    #method should returns bytes
-                return buffer
+                for buff in buffer:
+                    s += buff.decode("ascii")
+                return s
             else:
                 #buffer += oneByte.decode("ascii")
                 buffer.append(oneByte)
@@ -128,6 +154,7 @@ class LaserSerial():
         self.write('state?')
         msg = self.readLine()
         if debug:
+            print("debug")
             print(msg)
         if 'state? ' in msg:
             return int(msg[7])
@@ -140,6 +167,7 @@ class LaserSerial():
         while out > 0:
             msg = self.readLine()
             if debug:
+                print('out = ' + str(out))
                 print(msg)
             if cmd in msg:
                 n = len(cmd)

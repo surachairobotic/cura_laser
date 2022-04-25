@@ -15,9 +15,10 @@ laser = laserserial.LaserSerial()
 gcode = gcode.Gcode()
 debug = False
 
-fname = "C:/cura_laser/python/ear/layer_0.gcode"
-fout = "C:/cura_laser/python/ear_filter.gcode"
-folder = "C:/cura_laser/python/ear/"
+layers_path = "C:/cura_laser/resources/ear/"
+fname = layers_path + "layer_0.gcode"
+fout = "C:/cura_laser/resources/ear_filter.gcode"
+folder = "C:/cura_laser/resources/ear/"
 
 state = -1
 home = -1
@@ -34,7 +35,7 @@ def main():
     #laser.laser.draw_rect()
     #print("STATUS: " + str(head.card.read_status()))
     
-    state = 2
+    state = 0
     while(True):
         if state == 0:
             time.sleep(0.5)
@@ -259,7 +260,7 @@ def laser_process(state):
                 res = base.point(int(i)+1, True)
                 print(res)
                 print("Layer Loading : " + str(i))
-                fname = "C:/cura_laser/python/ear/layer_" + str(i) + ".gcode"
+                fname = layers_path + "layer_" + str(i) + ".gcode"
                 gcode_init(fname)
                 print("Init : pass")
                 exec_laser(True)
@@ -286,7 +287,7 @@ def execute_layer(layer):
     print("Base finished. Position : " + str(base.getPosition()*0.01) + " mm.")
 
     print("Layer Loading : " + str(layer))
-    fname = "C:/cura_laser/python/ear/layer_" + str(layer) + ".gcode"
+    fname = layers_path + "layer_" + str(layer) + ".gcode"
     print(fname)
     gcode_init(fname)
     print('Layer load finished.')
@@ -475,7 +476,7 @@ def avg(lst):
 def cal_offset():
     global gcode
     for layer in range(10):
-        fname = "C:/cura_laser/python/ear/layer_" + str(layer) + ".gcode"
+        fname = layers_path + "layer_" + str(layer) + ".gcode"
         print(fname)
         gcode_init(fname)
         x = []
@@ -493,7 +494,7 @@ def cal_offset():
     off = [off_x, off_y]
     print("off : " + str(off))
 
-    f = open('C:/cura_laser/python/ear_debug.txt', 'w')
+    f = open('C:/cura_laser/resources/ear_debug.txt', 'w')
     base_x = xx[2]
     base_y = yy[2]
     nx = []
@@ -529,7 +530,7 @@ def cal_offset():
     print("off : " + str(off))
 
     for layer in range(10):
-        fname = "C:/cura_laser/python/ear/layer_" + str(layer) + ".gcode"
+        fname = layers_path + "layer_" + str(layer) + ".gcode"
         print(fname)
         gcode_init(fname)
         x = []

@@ -1,5 +1,7 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import QThread
 from printer import *
+import time
 
 def pWidgets(wdgt, func=None, font=None):
     if not font:
@@ -7,11 +9,6 @@ def pWidgets(wdgt, func=None, font=None):
 
     p = wdgt
     p.setFont(font)
-    '''
-    if isinstance(p, QtWidgets.QLabel):
-        p.setAlignment(QtCore.Qt.AlignCenter)
-        print(type(p))
-    '''
 
     method = getattr(p, "setAlignment", None)
     if callable(method):
@@ -53,7 +50,11 @@ class FirstWindow(PageWindow):
         self.UiComponents()
 
     def gotoLaser(self):
+        self.goto("base")
         self.goto("laser")
+    
+    def refresh(self):
+        print("FirstWindow refresh.")
 
     def UiComponents(self):        
         vLayout = QtWidgets.QVBoxLayout()
@@ -70,7 +71,7 @@ class FirstWindow(PageWindow):
         self.setCentralWidget(wdg)
         
     def initEnvProcess(self):
-        self.gcode_file = "C:/cura_laser/python/ear/layer_0.gcode"
+        self.gcode_file = "C:/cura_laser/resources/strip_holes/layer_0.gcode"
         self.status = self.printer.init(self.gcode_file)
         self.updateStatus()
         
@@ -96,14 +97,16 @@ class LaserWindow(PageWindow):
         self.setWindowTitle("Laser")
         self.UiComponents()
 
+    def refresh(self):
+        print("LaserWindow refresh.")
+
     def goToMain(self):
         self.goto("main")
     def goToBase(self):
         self.goto("base")
     def getLaserState(self):
-        #self.label_getLaserState = 'Laser state : ' + str(self.printer.laser.checkState())
-        self.label_getLaserState = 'Laser state : ' + str(True)
-        self.labelWdgt.setText('Laser state : ' + str(True))
+        self.label_getLaserState = 'Laser state : ' + str(self.printer.laser.checkState(True))
+        self.labelWdgt.setText(self.label_getLaserState)
 
     def UiComponents(self):
         #self.nextButton = QtWidgets.QPushButton("nextButton", self)
@@ -113,17 +116,22 @@ class LaserWindow(PageWindow):
         self.btn_getLaserState = pWidgets(QtWidgets.QPushButton("getLaserState"), self.getLaserState)
         self.label_getLaserState = pWidgets(QtWidgets.QLabel("NaN"))
 
-        self.btn_sleep = pWidgets(QtWidgets.QPushButton("SLEEP"), self.getLaserState)
-        #self.btn_sleep.clicked.connect(self.printer.laser.setState(0))
-        self.btn_standby = pWidgets(QtWidgets.QPushButton("STANDBY"), self.getLaserState)
-        #self.btn_standby.clicked.connect(self.printer.laser.setState(1))
-        self.btn_on = pWidgets(QtWidgets.QPushButton("ON"), self.getLaserState)
-        #self.btn_on.clicked.connect(self.printer.laser.setState(2))
+        self.btn_sleep = pWidgets(QtWidgets.QPushButton("SLEEP"), lambda: self.printer.laser.setState(0))
+        self.btn_standby = pWidgets(QtWidgets.QPushButton("STANDBY"), lambda: self.printer.laser.setState(1))
+        self.btn_on = pWidgets(QtWidgets.QPushButton("ON"), lambda: self.printer.laser.setState(2))
+
+        self.btn_getInfo = pWidgets(QtWidgets.QPushButton("Get Info."), lambda: self.printer.laser.getAllInfo())
+        self.btn_setInfo = pWidgets(QtWidgets.QPushButton("Set Info."), lambda: self.printer.laser.setAllInfo())
         
         self.btn_quit = pWidgets(QtWidgets.QPushButton("QUIT"), QtCore.QCoreApplication.instance().quit)
         self.btn_next = pWidgets(QtWidgets.QPushButton("NEXT..."), self.goToBase)
 
         vLayout = QtWidgets.QVBoxLayout()
+
+        hLayout = QtWidgets.QHBoxLayout()
+        hLayout.addWidget(self.btn_getInfo)
+        hLayout.addWidget(self.btn_setInfo)
+        vLayout.addLayout(hLayout)
 
         hLayout = QtWidgets.QHBoxLayout()
         hLayout.addWidget(self.btn_getLaserState)
@@ -150,6 +158,7 @@ class LaserWindow(PageWindow):
 class BaseWindow(PageWindow):
     def __init__(self, p, f):
         super().__init__()
+        self.speed = 10
         self.printer = p
         self.font = f
         self.initUI()
@@ -158,39 +167,108 @@ class BaseWindow(PageWindow):
         self.setWindowTitle("Base")
         self.UiComponents()
 
+    def refresh(self):
+        print("BaseWindow refresh.")
+
     def goToLaser(self):
         self.goto("laser")
     def goToGCode(self):
         self.goto("gcode")
+    def goToProcess(self):
+        self.goto("process")
+    def goToMan(self):
+        self.goto("man")
+    def increaseSpeed(self):
+        self.speed = self.speed + 1
+        if self.speed > 10:
+            self.speed = 10
+        self.updateSpeed()
+    def decreaseSpeed(self):
+        self.speed = (self.speed - 1)
+        if self.speed < 1:
+            self.speed = 1
+        self.updateSpeed()
+    def updateSpeed(self):
+        self.txtBox1.setText(str(self.speed))
+        self.printer.base.setSpeed(self.speed)
+    def updatePos(self):
+        #print("Current Position : " + str(self.printer.base.getPosition()*0.01) + " mm.")
+        #if self.windowTitle() == "Base":
+        #print('updatePos')
+        self.label_pos.setText("Current Position : {:.2f} mm.".format(self.printer.base.getPosition()*0.01))
+    def setHome(self):
+        print("Set home : Start")
+        s = "Set home : Start\n"
+        home = self.printer.base.getPosition()
+        self.printer.base_layer_pos = []
+        for i in range(3):
+            #self.printer.base.createPoint(i+1, int(home-(i*10)))
+            self.printer.base.createPoint(i+1, int(home-(i*15)))
+            self.printer.base_layer_pos.append((home-(i*15))*0.01)
+            s += "layer " + str(i) + " = " + str(self.printer.base_layer_pos[i]) + " mm.\n"
+        self.printer.base_layer_count = len(self.printer.base_layer_pos)
+        print("Set home : Finished")
+        s += "Set home : Finished\n"
+        self.label_pos.setText(s)
+    def goPos(self):
+        pos = float(self.txtBox2.text())
+        self.printer.base.goPos(pos)
+        self.updatePos()
 
     def UiComponents(self):
         #self.nextButton = QtWidgets.QPushButton("nextButton", self)
         #self.nextButton.setGeometry(QtCore.QRect(5, 5, 100, 20))
         #self.nextButton.clicked.connect(self.goToGCode)
 
+        self.btn_up = pWidgets(QtWidgets.QPushButton("JOG +"))
+        self.btn_up.pressed.connect(self.printer.base.up)
+        self.btn_up.released.connect(self.printer.base.stop)
+        self.btn_up.released.connect(self.updatePos)
+        self.btn_down = pWidgets(QtWidgets.QPushButton("JOG -"))
+        self.btn_down.pressed.connect(self.printer.base.down)
+        self.btn_down.released.connect(self.printer.base.stop)
+        self.btn_down.released.connect(self.updatePos)
+        self.btn_home = pWidgets(QtWidgets.QPushButton("HOME"), self.printer.base.gohome)
+        self.btn_spdUp = pWidgets(QtWidgets.QPushButton("SPD +"), self.increaseSpeed)
+        self.btn_spdDown = pWidgets(QtWidgets.QPushButton("SPD -"), self.decreaseSpeed)
+        self.label_pos = pWidgets(QtWidgets.QLabel("Current position = ???"))
+        
+        self.txtBox2 = pWidgets(QtWidgets.QLineEdit())
+        self.txtBox2.setValidator(QtGui.QDoubleValidator())
+        self.txtBox2.setText('55.55')
+        self.btn_goPos = pWidgets(QtWidgets.QPushButton("goPos"), self.goPos)
+
         vLayout1 = QtWidgets.QVBoxLayout()
-        vLayout1.addWidget(pWidgets(QtWidgets.QPushButton("HOME")))
-        vLayout1.addWidget(pWidgets(QtWidgets.QPushButton("JOG +")))
-        vLayout1.addWidget(pWidgets(QtWidgets.QPushButton("JOG -")))
+        vLayout1.addWidget(self.btn_home)
+        vLayout1.addWidget(self.btn_up)
+        vLayout1.addWidget(self.btn_down)
 
         # change speed
         vLayout2 = QtWidgets.QVBoxLayout()
-        vLayout2.addWidget(pWidgets(QtWidgets.QPushButton("SPD +")))
-        vLayout2.addWidget(pWidgets(QtWidgets.QPushButton("SPD -")))
+        vLayout2.addWidget(self.btn_spdUp)
+        vLayout2.addWidget(self.btn_spdDown)
         hLayout2 = QtWidgets.QHBoxLayout()
-        txtBox1 = pWidgets(QtWidgets.QLineEdit())
-        txtBox1.setValidator(QtGui.QIntValidator())
-        txtBox1.setMaxLength(2)
-        hLayout2.addWidget(txtBox1)
+        self.txtBox1 = pWidgets(QtWidgets.QLineEdit())
+        self.txtBox1.setValidator(QtGui.QIntValidator())
+        self.txtBox1.setMaxLength(2)
+        self.txtBox1.setText(str(self.speed))
+        hLayout2.addWidget(self.txtBox1)
         hLayout2.addLayout(vLayout2)
+        hLayout3 = QtWidgets.QHBoxLayout()
+        hLayout3.addWidget(pWidgets(QtWidgets.QLabel("Set Position : ")))
+        hLayout3.addWidget(self.txtBox2)
+        hLayout3.addWidget(pWidgets(QtWidgets.QLabel("mm.")))
+        hLayout3.addWidget(self.btn_goPos)
         vLayout3 = QtWidgets.QVBoxLayout()
         vLayout3.addLayout(hLayout2)
-        vLayout3.addWidget(pWidgets(QtWidgets.QLabel("current position = ???")))
+        vLayout3.addLayout(hLayout3)
+        vLayout3.addWidget(self.label_pos)
+        vLayout3.addWidget(pWidgets(QtWidgets.QPushButton("Get current position."), self.updatePos))
         
         vLayout4 = QtWidgets.QVBoxLayout()
-        vLayout4.addWidget(pWidgets(QtWidgets.QPushButton("SAVE")))
+        vLayout4.addWidget(pWidgets(QtWidgets.QPushButton("Set Layer 0"), self.setHome))
         vLayout4.addWidget(pWidgets(QtWidgets.QPushButton("<-- BACK"), self.goToLaser))
-        vLayout4.addWidget(pWidgets(QtWidgets.QPushButton("NEXT -->"), self.goToGCode))
+        vLayout4.addWidget(pWidgets(QtWidgets.QPushButton("NEXT -->"), self.goToMan))
         vLayout4.addWidget(pWidgets(QtWidgets.QPushButton("EXIT"), QtCore.QCoreApplication.instance().quit))
         
         hLayout = QtWidgets.QHBoxLayout()
@@ -201,6 +279,271 @@ class BaseWindow(PageWindow):
         wdg = QtWidgets.QWidget()
         wdg.setLayout(hLayout)
         self.setCentralWidget(wdg)
+        
+        '''
+        self.thread = QThread(self)
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.updatePos)
+        self.timer.setInterval(1)
+        self.timer.start()
+        self.timer.moveToThread(self.thread);
+        self.thread.start()
+        '''        
+
+class ManualWindow(PageWindow):
+    def __init__(self, p, f):
+        super().__init__()
+        self.fdir = "C:/cura_laser/resources/strip_holes/"
+        self.printer = p
+        self.font = f
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle("Manual")
+        self.UiComponents()
+
+    def refresh(self):
+        print("ManualWindow refresh.")
+        print("self.printer.base_layer_count = " + str(self.printer.base_layer_count))
+        for i in range(self.printer.base_layer_count):
+            s = "layer " + str(i) + " : " + str(self.printer.base_layer_pos[i]) + " mm."
+            self.baseList.insertItem(i, s)
+        
+
+    def goToParam(self):
+        self.goto("param")
+
+    def execute(self):
+        #self.printer.execute_layer(0)
+        self.printer.exec_laser(True)
+        print("Laser Excuting...")
+        time.sleep(0.01)
+        s = self.printer.head.card.read_status()
+        #print("before : " + bin(s)[8] + ": s")
+        while bin(s)[8] != '1':
+            #print(bin(s)[8] + ": s")
+            s = self.printer.head.card.read_status()                    
+            time.sleep(1)
+        self.printer.laser.setState(1)
+        print("Layer finished.")
+
+
+    def baseLayer(self):
+        row = self.baseList.currentRow()
+        print("baseLayer : " + str(row))
+        res = self.printer.base.point(int(row)+1, True)
+        print(res)
+        self.updatePos()
+    def updatePos(self):
+        self.label_basePos.setText("Current Position : " + str(self.printer.base.getPosition()*0.01) + " mm.")
+    def getFileLists(self, mypath):
+        from os import listdir
+        from os.path import isfile, join
+        return [f for f in listdir(mypath) if isfile(join(mypath, f))]
+    def loadGCode(self):
+        row = self.gcodeList.currentRow()
+        print("gcodeRow : " + str(row))
+        print("gcodeFile : " + self.fList[row])
+        b = self.printer.gcode_init(self.fdir + self.fList[row])
+        if b:
+            b = "True"
+        else:
+            b = "False"
+        print("gcode loadding : " + b)
+        self.label_gcode.setText("gcode loadding : " + b)
+
+    def UiComponents(self):
+        self.baseList = QtWidgets.QListWidget()
+        print("self.printer.base_layer_count = " + str(self.printer.base_layer_count))
+        for i in range(self.printer.base_layer_count):
+            s = "layer " + str(i) + " : " + str(self.printer.base_layer_pos[i]) + " mm."
+            self.baseList.insertItem(i, s)
+
+        self.label_basePos = pWidgets(QtWidgets.QLabel("BasePos = ???"))
+        self.label_gcode = pWidgets(QtWidgets.QLabel("GCodeStatus = ???"))
+
+        vLayout1 = QtWidgets.QVBoxLayout()
+        vLayout1.addWidget(pWidgets(self.baseList, self.baseLayer))
+
+        vLayout2 = QtWidgets.QVBoxLayout()
+        self.gcodeList = QtWidgets.QListWidget()
+        self.fList = self.getFileLists(self.fdir)
+        for i in range(len(self.fList)):
+            self.gcodeList.insertItem(i, self.fList[i])
+        vLayout2.addWidget(self.gcodeList)
+        vLayout2.addWidget(pWidgets(QtWidgets.QPushButton("Load GCode."), self.loadGCode))
+        vLayout2.addWidget(pWidgets(self.label_gcode))
+
+        vLayout3 = QtWidgets.QVBoxLayout()
+        vLayout3.addWidget(pWidgets(QtWidgets.QPushButton("Laser Execute."), self.execute))
+        vLayout3.addWidget(pWidgets(QtWidgets.QPushButton("Parameter Page."), self.goToParam))
+        vLayout3.addWidget(pWidgets(QtWidgets.QPushButton("QUIT"), QtCore.QCoreApplication.instance().quit))
+
+        hLayout = QtWidgets.QHBoxLayout()
+        hLayout.addLayout(vLayout1)
+        hLayout.addLayout(vLayout2)
+        hLayout.addLayout(vLayout3)
+
+        wdg = QtWidgets.QWidget()
+        wdg.setLayout(hLayout)
+        self.setCentralWidget(wdg)
+
+class ParamWindow(PageWindow):
+    def __init__(self, p, f):
+        super().__init__()
+        self.printer = p
+        self.font = f
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle("Parameter")
+        self.UiComponents()
+
+    def refresh(self):
+        print("GCodeWindow refresh.")
+
+    def goToProcess(self):
+        self.goto("process")
+
+    def execute(self):
+        self.printer.execute_layer(0)
+    def get_epfq(self):
+        s = self.printer.laser.getEpfq()
+        print('epfq = ' + str(s))
+        self.label_epfq.setText(str(s))
+        return s
+    def set_epfq(self):
+        s = self.tbEpfq.text()
+        self.printer.laser.setStdfreq(s)
+        self.tbEpfq.setText(str(self.get_epfq()))
+    def get_freq(self):
+        s = self.printer.laser.getFreq()
+        print('freq = ' + str(s))
+        self.label_freq.setText(str(s))
+        return s
+    def set_freq(self):
+        s = self.tbFreq.text()
+        self.printer.laser.freq(s)
+        self.tbFreq.setText(str(self.get_freq()))
+    def get_xxx(self, func, label, name):
+        s = func()
+        print(name + ' = ' + str(s))
+        label.setText(str(s))
+        return s
+    def set_xxx(self, funcSet, tb, funcGet, label, txt):
+        s = tb.text()
+        funcSet(s)
+        label.setText(str(self.get_xxx(funcGet, label, txt)))
+    
+    def getsetGroup(self, funcGet, funcSet, strGet):
+        nHLayout = QtWidgets.QHBoxLayout()
+        labelGet = pWidgets(QtWidgets.QLabel(strGet + " = ???"))
+        nHLayout.addWidget(labelGet)
+        nHLayout.addWidget(pWidgets(QtWidgets.QPushButton("Get "+strGet), lambda: self.get_xxx(funcGet, labelGet, strGet)))
+        tb = pWidgets(QtWidgets.QLineEdit())
+        tb.setValidator(QtGui.QIntValidator())
+        tb.setMaxLength(6)
+        tb.setText(str(funcGet()))
+        nHLayout.addWidget(tb)
+        nHLayout.addWidget(pWidgets(QtWidgets.QPushButton("Set "+strGet), lambda: self.set_xxx(funcSet, tb, funcGet, labelGet, strGet)))
+        #self.tbOfftime = tb
+        #hLayout3 = nHLayout
+        return nHLayout
+
+    def UiComponents(self):
+        self.label_epfq = pWidgets(QtWidgets.QLabel("epfq = ???"))
+        self.label_freq = pWidgets(QtWidgets.QLabel("freq = ???"))
+        self.label_offtime = pWidgets(QtWidgets.QLabel("offtime = ???"))
+
+        vLayout = QtWidgets.QVBoxLayout()
+
+        hLayout1 = QtWidgets.QHBoxLayout()
+        hLayout1.addWidget(self.label_epfq)
+        hLayout1.addWidget(pWidgets(QtWidgets.QPushButton("Get epfq"), lambda: self.get_xxx(self.printer.laser.getEpfq, self.label_epfq, "epfq")))
+        self.tbEpfq = pWidgets(QtWidgets.QLineEdit())
+        self.tbEpfq.setValidator(QtGui.QIntValidator())
+        self.tbEpfq.setMaxLength(6)
+        strEpfq = ''
+        if not (self.printer.laser is ''):
+            strEpfq = str(self.printer.laser.getEpfq())
+        self.tbEpfq.setText(strEpfq)
+        hLayout1.addWidget(self.tbEpfq)
+        hLayout1.addWidget(pWidgets(QtWidgets.QPushButton("Set epfq"), lambda: self.set_xxx(self.printer.laser.setStdfreq, self.tbEpfq, self.printer.laser.getEpfq, self.label_epfq, "epfq")))
+
+        hLayout2 = QtWidgets.QHBoxLayout()
+        hLayout2.addWidget(self.label_freq)
+        #hLayout2.addWidget(pWidgets(QtWidgets.QPushButton("Get freq"), self.get_freq))
+        hLayout2.addWidget(pWidgets(QtWidgets.QPushButton("Get freq"), lambda: self.get_xxx(self.printer.laser.getFreq, self.label_freq, "freq")))
+        self.tbFreq = pWidgets(QtWidgets.QLineEdit())
+        self.tbFreq.setValidator(QtGui.QIntValidator())
+        self.tbFreq.setMaxLength(6)
+        self.tbFreq.setText(str(self.printer.laser.getFreq()))
+        hLayout2.addWidget(self.tbFreq)
+        #hLayout2.addWidget(pWidgets(QtWidgets.QPushButton("Set freq"), self.set_freq))
+        hLayout2.addWidget(pWidgets(QtWidgets.QPushButton("Set freq"), lambda: self.set_xxx(self.printer.laser.freq, self.tbFreq, self.printer.laser.getFreq, self.label_freq, "freq")))
+
+        '''
+        hLayout3 = QtWidgets.QHBoxLayout()
+        hLayout3.addWidget(self.label_offtime)
+        hLayout3.addWidget(pWidgets(QtWidgets.QPushButton("Get offtime"), lambda: self.get_xxx(self.printer.laser.getOfftime, self.label_offtime, "offtime")))
+        self.tbOfftime = pWidgets(QtWidgets.QLineEdit())
+        self.tbOfftime.setValidator(QtGui.QIntValidator())
+        self.tbOfftime.setMaxLength(6)
+        self.tbOfftime.setText(str(self.printer.laser.getOfftime()))
+        hLayout3.addWidget(self.tbOfftime)
+        hLayout3.addWidget(pWidgets(QtWidgets.QPushButton("Set offtime"), lambda: self.set_xxx(self.printer.laser.setOfftime, self.tbOfftime, self.printer.laser.getOfftime, self.label_offtime, "offtime")))
+        '''
+
+        '''
+        nHLayout = QtWidgets.QHBoxLayout()
+        funcGet = self.printer.laser.getOfftime
+        funcSet = self.printer.laser.setOfftime
+        labelGet = self.label_offtime
+        strGet = "offtime"
+        nHLayout.addWidget(labelGet)
+        nHLayout.addWidget(pWidgets(QtWidgets.QPushButton("Get offtime"), lambda: self.get_xxx(funcGet, labelGet, strGet)))
+        tb = pWidgets(QtWidgets.QLineEdit())
+        tb.setValidator(QtGui.QIntValidator())
+        tb.setMaxLength(6)
+        tb.setText(str(funcGet()))
+        nHLayout.addWidget(tb)
+        nHLayout.addWidget(pWidgets(QtWidgets.QPushButton("Set offtime"), lambda: self.set_xxx(funcSet, tb, funcGet, labelGet, strGet)))
+        self.tbOfftime = tb
+        hLayout3 = nHLayout
+        '''
+        hLayout3 = self.getsetGroup(self.printer.laser.getOfftime, self.printer.laser.setOfftime, "offtime")
+        hLayout4 = self.getsetGroup(self.printer.laser.getGateext, self.printer.laser.setGateext, "gateext")
+
+        vLayout.addLayout(hLayout1)
+        vLayout.addLayout(hLayout2)
+        vLayout.addLayout(hLayout3)
+        vLayout.addLayout(hLayout4)
+
+        wdg = QtWidgets.QWidget()
+        wdg.setLayout(vLayout)
+        self.setCentralWidget(wdg)
+
+class ProcessWindow(PageWindow):
+    def __init__(self, p, f):
+        super().__init__()
+        self.printer = p
+        self.font = f
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle("Process")
+        self.UiComponents()
+
+    def refresh(self):
+        print("ProcessWindow refresh.")
+
+    def goToMain(self):
+        self.goto("main")
+
+    def UiComponents(self):
+        self.nextButton = QtWidgets.QPushButton("nextButton", self)
+        self.nextButton.setGeometry(QtCore.QRect(5, 5, 100, 20))
+        self.nextButton.clicked.connect(self.goToMain)
 
 class MainWindow(PageWindow):
     def __init__(self, p, f):
@@ -224,6 +567,9 @@ class MainWindow(PageWindow):
             self.make_handleButton("searchButton")
         )
 
+    def refresh(self):
+        print("MainWindow refresh.")
+
     def make_handleButton(self, button):
         def handleButton():
             if button == "searchButton":
@@ -242,6 +588,9 @@ class SearchWindow(PageWindow):
         self.setWindowTitle("Search for something")
         self.UiComponents()
 
+    def refresh(self):
+        print("SearchWindow refresh.")
+
     def goToMain(self):
         self.goto("main")
 
@@ -249,44 +598,6 @@ class SearchWindow(PageWindow):
         self.backButton = QtWidgets.QPushButton("BackButton", self)
         self.backButton.setGeometry(QtCore.QRect(5, 5, 100, 20))
         self.backButton.clicked.connect(self.goToMain)
-
-class GCodeWindow(PageWindow):
-    def __init__(self, p, f):
-        super().__init__()
-        self.printer = p
-        self.font = f
-        self.initUI()
-
-    def initUI(self):
-        self.setWindowTitle("GCode")
-        self.UiComponents()
-
-    def goToProcess(self):
-        self.goto("process")
-
-    def UiComponents(self):
-        self.nextButton = QtWidgets.QPushButton("nextButton", self)
-        self.nextButton.setGeometry(QtCore.QRect(5, 5, 100, 20))
-        self.nextButton.clicked.connect(self.goToProcess)
-
-class ProcessWindow(PageWindow):
-    def __init__(self, p, f):
-        super().__init__()
-        self.printer = p
-        self.font = f
-        self.initUI()
-
-    def initUI(self):
-        self.setWindowTitle("Process")
-        self.UiComponents()
-
-    def goToMain(self):
-        self.goto("main")
-
-    def UiComponents(self):
-        self.nextButton = QtWidgets.QPushButton("nextButton", self)
-        self.nextButton.setGeometry(QtCore.QRect(5, 5, 100, 20))
-        self.nextButton.clicked.connect(self.goToMain)
 
 class Window(QtWidgets.QMainWindow):
     def __init__(self, p, parent=None):
@@ -304,8 +615,9 @@ class Window(QtWidgets.QMainWindow):
         self.register(SearchWindow(self.printer, self.font), "search")
         self.register(LaserWindow(self.printer, self.font), "laser")
         self.register(BaseWindow(self.printer, self.font), "base")
-        self.register(GCodeWindow(self.printer, self.font), "gcode")
+        #self.register(ParamWindow(self.printer, self.font), "param")
         self.register(ProcessWindow(self.printer, self.font), "process")
+        self.register(ManualWindow(self.printer, self.font), "man")
 
         self.goto("first")
 
@@ -321,47 +633,10 @@ class Window(QtWidgets.QMainWindow):
             widget = self.m_pages[name]
             self.stacked_widget.setCurrentWidget(widget)
             self.setWindowTitle(widget.windowTitle())
-
-class A():
-    def __init__(self):
-        super().__init__()
-        self.a = 10
-    def get_a(self):
-        return self.a
-
-class B(A):
-    def __init__(self):
-        super().__init__()
-        self.b = 9
-    def get_b(self):
-        return self.b
-
-class C(B):
-    def __init__(self, k):
-        super().__init__()
-        self.c = 8
-        self.kk = k
-        
-    def get_c(self):
-        return self.c
-    def plus_a(self):
-        self.a = self.a + 1
+            widget.refresh()
 
 if __name__ == "__main__":
     import sys
-    
-    z = A()
-    x1 = C(z)
-    x2 = C(z)
-    x3 = C(z)
-    print(x1.kk.a)
-    print(x2.kk.a)
-    print(x3.kk.a)
-    x3.kk.a = 77
-    print(x1.kk.a)
-    print(x2.kk.a)
-    print(x3.kk.a)
-
     
     app = QtWidgets.QApplication(sys.argv)
     

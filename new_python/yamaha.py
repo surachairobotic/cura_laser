@@ -69,13 +69,17 @@ class Yamaha():
         return self.readAll()
     def point(self, num:int, block:bool=False):
         msg = "@START"+str(num)+".1\r\n"
-        #print("point : " + msg)
+        print("point : " + msg)
         x = self.write(msg)
         if block:
             t = time.time()
+            t2 = time.time()
             while True:
                 status = self.statusOperation()
-                #print("status : " + str(status))
+                if time.time() - t2 > 1.0:
+                    print("status : " + str(status))
+                    #print("Position : " + str(self.getPosition()))
+                    t2 = time.time()
                 if status == 0:
                     break
         return self.readAll()
@@ -83,6 +87,11 @@ class Yamaha():
         msg = "@ORG.1\r\n"
         x = self.write(msg)
         return self.readAll()
+    def goPos(self, pos):
+        realPos = int(pos*100)
+        print('realPos : {}'.format(realPos))
+        self.createPoint(50, realPos)
+        self.point(50)
     def reset(self):  
         msg = "@RESET.1\r\n"
         x = self.write(msg)
@@ -123,6 +132,16 @@ class Yamaha():
             return self.statusOperation()
         x = x[6:x.find('\r')]
         return int(x)
+
+    def up(self):
+        print("up")
+        self.write("@JOG+.1\r\n")
+    def down(self):
+        print("down")
+        self.write("@JOG-.1\r\n")
+    def stop(self):
+        print("stop")
+        self.write("@STOP.1\r\n")
 
     def tmp(self):
         #print(self.ser.name)

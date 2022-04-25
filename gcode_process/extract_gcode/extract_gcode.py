@@ -1,7 +1,7 @@
 import random
 
 def main():
-  f = open("C:/ws_python/gcode2png/ear.gcode", "r")
+  f = open("C:/cura_laser/resources/PM_Strip_with_holes-Body.gcode", "r")
   data = f.readlines()
   f.close()
   
