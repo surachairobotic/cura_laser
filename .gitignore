@@ -33,3 +33,5 @@
 
 /cura-build-environment
 */__pycache__
+*.gcode
+*.bak
