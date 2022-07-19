@@ -1,7 +1,7 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QThread
 from printer import *
-import time
+import time, threading
 
 def pWidgets(wdgt, func=None, font=None):
     if not font:
@@ -50,7 +50,7 @@ class FirstWindow(PageWindow):
         self.UiComponents()
 
     def gotoLaser(self):
-        self.goto("base")
+        #self.goto("base")
         self.goto("laser")
     
     def refresh(self):
@@ -71,7 +71,7 @@ class FirstWindow(PageWindow):
         self.setCentralWidget(wdg)
         
     def initEnvProcess(self):
-        self.gcode_file = "C:/cura_laser/resources/strip_holes/layer_0.gcode"
+        self.gcode_file = "C:/cura_laser/resources/gcodeHere/001.gcode"
         self.status = self.printer.init(self.gcode_file)
         self.updateStatus()
         
@@ -201,10 +201,16 @@ class BaseWindow(PageWindow):
         s = "Set home : Start\n"
         home = self.printer.base.getPosition()
         self.printer.base_layer_pos = []
-        for i in range(3):
+        self.printer.base_layer_name = []
+        for i in range(10):
             #self.printer.base.createPoint(i+1, int(home-(i*10)))
-            self.printer.base.createPoint(i+1, int(home-(i*15)))
-            self.printer.base_layer_pos.append((home-(i*15))*0.01)
+            level = int(home-(i*15))
+            self.printer.base.createPoint(2*i+1, level-1000)
+            self.printer.base_layer_pos.append((level-1000)*0.01)
+            self.printer.base_layer_name.append("layer " + str(i+1) + ', -1mm')
+            self.printer.base.createPoint(2*i+2, level)
+            self.printer.base_layer_pos.append(level*0.01)
+            self.printer.base_layer_name.append("layer " + str(i+1))
             s += "layer " + str(i) + " = " + str(self.printer.base_layer_pos[i]) + " mm.\n"
         self.printer.base_layer_count = len(self.printer.base_layer_pos)
         print("Set home : Finished")
@@ -291,12 +297,15 @@ class BaseWindow(PageWindow):
         '''        
 
 class ManualWindow(PageWindow):
-    def __init__(self, p, f):
+    def __init__(self, p, f, _mark):
         super().__init__()
-        self.fdir = "C:/cura_laser/resources/strip_holes/"
+        self.fdir = "C:/cura_laser/resources/gcodeHere/"
         self.printer = p
         self.font = f
+        self.statusStop = False
+        self.statusThread = False
         self.initUI()
+        self.mark = _mark
 
     def initUI(self):
         self.setWindowTitle("Manual")
@@ -304,29 +313,45 @@ class ManualWindow(PageWindow):
 
     def refresh(self):
         print("ManualWindow refresh.")
+        self.baseList.clear()
         print("self.printer.base_layer_count = " + str(self.printer.base_layer_count))
         for i in range(self.printer.base_layer_count):
-            s = "layer " + str(i) + " : " + str(self.printer.base_layer_pos[i]) + " mm."
-            self.baseList.insertItem(i, s)
+            #s = "layer " + str(i) + " : " + str(self.printer.base_layer_pos[i]) + " mm."
+            self.baseList.insertItem(i, self.printer.base_layer_name[i])
         
 
     def goToParam(self):
         self.goto("param")
+    def goToBase(self):
+        self.goto("base")
 
     def execute(self):
+        self.statusThread = True
         #self.printer.execute_layer(0)
-        self.printer.exec_laser(True)
+        self.printer.exec_laser(True, self.mark)
         print("Laser Excuting...")
         time.sleep(0.01)
         s = self.printer.head.card.read_status()
-        #print("before : " + bin(s)[8] + ": s")
+        print("before : " + bin(s) + ": s")
+        print("before : " + bin(s)[8] + ": s")
         while bin(s)[8] != '1':
-            #print(bin(s)[8] + ": s")
+            if self.statusStop is True:
+                break
+            print(bin(s)[8] + ": s")
             s = self.printer.head.card.read_status()                    
             time.sleep(1)
         self.printer.laser.setState(1)
+        self.printer.exec_laser(False, self.mark)
         print("Layer finished.")
-
+        self.statusThread = False
+    def executeThread(self):
+        print('executeThread')
+        if self.statusThread is False:
+            self.statusStop = False
+            excThread = threading.Thread(target=self.execute)
+            excThread.start()
+    def executeStop(self):
+        self.statusStop = True
 
     def baseLayer(self):
         row = self.baseList.currentRow()
@@ -354,10 +379,12 @@ class ManualWindow(PageWindow):
 
     def UiComponents(self):
         self.baseList = QtWidgets.QListWidget()
+        self.baseList.clear()
+        print('self.baseList.size = ' + str(self.baseList.size))
         print("self.printer.base_layer_count = " + str(self.printer.base_layer_count))
         for i in range(self.printer.base_layer_count):
-            s = "layer " + str(i) + " : " + str(self.printer.base_layer_pos[i]) + " mm."
-            self.baseList.insertItem(i, s)
+            #s = "layer " + str(i) + " : " + str(self.printer.base_layer_pos[i]) + " mm."
+            self.baseList.insertItem(i, self.printer.base_layer_name[i])
 
         self.label_basePos = pWidgets(QtWidgets.QLabel("BasePos = ???"))
         self.label_gcode = pWidgets(QtWidgets.QLabel("GCodeStatus = ???"))
@@ -375,8 +402,10 @@ class ManualWindow(PageWindow):
         vLayout2.addWidget(pWidgets(self.label_gcode))
 
         vLayout3 = QtWidgets.QVBoxLayout()
-        vLayout3.addWidget(pWidgets(QtWidgets.QPushButton("Laser Execute."), self.execute))
+        vLayout3.addWidget(pWidgets(QtWidgets.QPushButton("Laser Execute."), self.executeThread))
+        vLayout3.addWidget(pWidgets(QtWidgets.QPushButton("Laser STOP."), self.executeStop))
         vLayout3.addWidget(pWidgets(QtWidgets.QPushButton("Parameter Page."), self.goToParam))
+        vLayout3.addWidget(pWidgets(QtWidgets.QPushButton("BACK"), self.goToBase))
         vLayout3.addWidget(pWidgets(QtWidgets.QPushButton("QUIT"), QtCore.QCoreApplication.instance().quit))
 
         hLayout = QtWidgets.QHBoxLayout()
@@ -389,10 +418,12 @@ class ManualWindow(PageWindow):
         self.setCentralWidget(wdg)
 
 class ParamWindow(PageWindow):
-    def __init__(self, p, f):
+    def __init__(self, p, f, _mark):
         super().__init__()
         self.printer = p
         self.font = f
+        self.mark = _mark
+        #self.mark = 50.0
         self.initUI()
 
     def initUI(self):
@@ -404,6 +435,9 @@ class ParamWindow(PageWindow):
 
     def goToProcess(self):
         self.goto("process")
+    def goToMan(self):
+        print('goToManual')
+        self.goto("man")
 
     def execute(self):
         self.printer.execute_layer(0)
@@ -513,11 +547,15 @@ class ParamWindow(PageWindow):
         '''
         hLayout3 = self.getsetGroup(self.printer.laser.getOfftime, self.printer.laser.setOfftime, "offtime")
         hLayout4 = self.getsetGroup(self.printer.laser.getGateext, self.printer.laser.setGateext, "gateext")
+        hLayout5 = self.getsetGroup(self.printer.get_execGain, self.printer.set_execGain, "XY_Gain")
 
         vLayout.addLayout(hLayout1)
         vLayout.addLayout(hLayout2)
         vLayout.addLayout(hLayout3)
         vLayout.addLayout(hLayout4)
+        vLayout.addLayout(hLayout5)
+        vLayout.addWidget(pWidgets(QtWidgets.QPushButton("Get Info."), self.printer.laser.getAllInfo))
+        vLayout.addWidget(pWidgets(QtWidgets.QPushButton("<< BACK"), self.goToMan))
 
         wdg = QtWidgets.QWidget()
         wdg.setLayout(vLayout)
@@ -604,6 +642,7 @@ class Window(QtWidgets.QMainWindow):
         super().__init__()
         self.printer = p
         self.font = QtGui.QFont("Arial", 7, QtGui.QFont.Bold)
+        self.speed = 15.0
 
         self.stacked_widget = QtWidgets.QStackedWidget()
         self.setCentralWidget(self.stacked_widget)
@@ -615,9 +654,9 @@ class Window(QtWidgets.QMainWindow):
         self.register(SearchWindow(self.printer, self.font), "search")
         self.register(LaserWindow(self.printer, self.font), "laser")
         self.register(BaseWindow(self.printer, self.font), "base")
-        #self.register(ParamWindow(self.printer, self.font), "param")
+        self.register(ParamWindow(self.printer, self.font, self.speed), "param")
         self.register(ProcessWindow(self.printer, self.font), "process")
-        self.register(ManualWindow(self.printer, self.font), "man")
+        self.register(ManualWindow(self.printer, self.font, self.speed), "man")
 
         self.goto("first")
 

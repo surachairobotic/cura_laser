@@ -46,10 +46,11 @@ class LaserSerial():
         '''
         return True
 
-    def write(self, msg:str) -> str:
+    def write(self, msg:str, debug=False) -> str:
         str_as_bytes = str.encode(msg+'\n')
         self.ser.write(str_as_bytes)
-        #print(msg)
+        if debug:
+            print(msg)
 
     def getState(self, debug=False):
         return self.readCmd('state?', debug)
@@ -88,6 +89,14 @@ class LaserSerial():
 
     def setAllInfo(self, debug=False):
         print('set all info.')
+        f = 50000
+        pwm = 1.0/f*1000000000
+        off = 1000 #int(pwm-17)
+        print([f, pwm, off])
+        self.setGateext(0)
+        self.setStdfreq(f)
+        self.freq(f, debug=True)
+        self.setOfftime(off)
 
     def setState(self, n, timeout=1):
         print("call : setState = " + str(n))
@@ -100,8 +109,8 @@ class LaserSerial():
     
     def setStdfreq(self, freq):
         self.write('epfq '+str(freq))
-    def freq(self, n):
-        self.write('freq '+str(n))
+    def freq(self, n, debug=False):
+        self.write('freq '+str(n), debug)
     def setOfftime(self, n):
         self.write('offtime '+str(n))
     def setGateext(self, n):

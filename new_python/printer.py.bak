@@ -12,6 +12,8 @@ class Printer():
         self.gcode = gcode.Gcode()
         self.base_layer_count = 0
         self.base_layer_pos = []
+        self.base_layer_name = []
+        self.exec_gain = 300
     
     def init(self, fname):
         res = ["Card init : ", "Laser init : ", "Base init : ", "G-Code init : "]
@@ -32,20 +34,25 @@ class Printer():
             self.laser_home_position()
         return res
 
-    def execute_layer(self, layer):
+    def get_execGain(self):
+        return self.exec_gain
+    def set_execGain(self, g):
+        self.exec_gain = g
+    def execute_layer(self, layer, mark=150.0):
         print("----- execute_layer : " + str(layer) + " : start -----")
         self.laser_home_position()
         print("Moving base to layer " + str(layer) + '.')
         res = self.base.point(layer+1, True)
         print("Base finished. Position : " + str(self.base.getPosition()*0.01) + " mm.")
 
-        print("Layer Loading : " + str(layer))
-        fname = "C:/cura_laser/resources/ear/layer_" + str(layer) + ".gcode"
+        strLayer = str(i).zfill(3)
+        print("Layer Loading : " + str(strLayer))
+        fname = "C:/cura_laser/resources/gcodeHere/" + strLayer + ".gcode"
         print(fname)
         self.gcode_init(fname)
         print('Layer load finished.')
 
-        self.exec_laser(True)
+        self.exec_laser(True, mark)
         print("Laser Excuting...")
         time.sleep(0.01)
         s = self.head.card.read_status()
@@ -101,7 +108,8 @@ class Printer():
         self.laser.setState(1)
         self.head.card.exec_list(True)        
 
-    def exec_laser(self, status:bool, k=900):
+    def exec_laser(self, status:bool, k=300, mark=150.0):
+        k = int(self.exec_gain)
         step_period = ctypes.c_ushort(60)
         jump_del = ctypes.c_ushort(300)
         mark_del = ctypes.c_ushort(300)
@@ -113,7 +121,9 @@ class Printer():
         t3 = ctypes.c_ushort(0)
         self.head.card.setDelays(step_period, jump_del, mark_del, poly_del, laser_off_del, laser_on_del, t1, t2, t3)
 
-        self.head.card.set_speed(ctypes.c_double(1300.0), ctypes.c_double(400.0)) # jump, mark
+        jump = 1831.1
+        jump = 180.0
+        self.head.card.set_speed(ctypes.c_double(1831.1), ctypes.c_double(150.0)) # jump, mark
 
         x = []
         y = []
@@ -155,9 +165,13 @@ class Printer():
             self.head.card.start_list(False)
             res = self.head.card.read_status()
             self.laser.setState(2)
+            self.laser.getAllInfo()
             self.head.card.exec_list(True)        
         else:
+            self.laser.setState(1)
+            self.laser.getAllInfo()
             self.head.card.exec_list(False)
+            res = 'stop completed.'
         return res
 
     def avg(self, lst):

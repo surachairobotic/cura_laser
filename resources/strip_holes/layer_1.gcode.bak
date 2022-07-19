@@ -1,4 +1,3 @@
-;LAYER:1
 ;TYPE:FILL
 ;MESH:Strip with holes-Body (1).stl
 G1 F2460 X104.543 Y55.495 E58.65823
